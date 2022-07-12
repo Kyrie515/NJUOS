@@ -1,0 +1,107 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<dirent.h>
+#include<string.h>
+#include<math.h>
+#include<ctype.h>
+
+char* PIDS[1000];
+int cnt = 0;
+int num = 0;
+typedef struct process{
+    int PID;
+    int PPID;
+    char name[100];
+}process;
+
+process* processes[1000];
+
+//判断文件是否是纯数字
+
+int isValid(char* filename) {
+    if (filename == NULL) {
+        return 0;
+    }
+
+    for(int i = 0; i < strlen(filename); i++) {
+        if (!isdigit(filename[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+//获取/proc下一个进程的信息并封装在process结构体中
+process* getProcessInfo(char* PID) {
+    //利用PID找到每个进程
+    char path[100] = "/proc//stat";
+    for(int i = 0; i < strlen(PID); i++) {
+        for(int j = strlen(path); j > 5; j--) {
+            path[j + 1] = path[j];
+        }
+    }
+    for(int i = 6; i < strlen(PID) + 6; i++){
+        path[i] = PID[i - 6];
+    }
+    // printf("The path is: %s\n", path);
+    //打开文件
+    FILE* f = fopen(path, "r");
+    if (f == NULL) {
+        printf("File open error!\n");
+        return NULL;
+    }
+    process* p = (process*)malloc(sizeof(process));
+
+    char stat[20];
+    //封装在process结构体
+    fscanf(f, "%d %s %s %d", &(p -> PID), p -> name, stat, &(p -> PPID));
+    fclose(f);
+    processes[num] = p;
+    num++;
+    return p;
+}
+
+//找到/proc下的所有进程号
+void getPIDS() {
+
+    int i = 0;//计算进程数量
+
+    struct dirent* entry;
+
+
+    //打开/proc目录
+    char* path = "/proc/";
+    DIR* dir = opendir(path);
+    if (dir == NULL) {
+        printf("Directory /proc/ opened failed!");
+        return;
+    }
+
+    while((entry = readdir(dir)) != NULL) {
+        if(strcmp(entry -> d_name, ".") == 0 || strcmp(entry -> d_name, "..") == 0){
+        continue;
+        }
+        if (isValid(entry -> d_name)) {
+            PIDS[cnt] = entry -> d_name;
+            cnt++;
+        }
+    }
+    closedir(dir);
+    return;
+}
+
+
+
+int main(int argc, const char * argv[]) {
+    getPIDS();
+    printf("cnt: %d", cnt);
+    for(int i = 0; i < cnt; i++) {
+        printf("The PIDS[%d] is: %s\n", i, PIDS[i]);
+    }
+    for(int i = 0; i < cnt; i++) {
+        getProcessInfo(PIDS[i]);
+    }
+    for(int i = 0; i < cnt; i++) {
+        printf("The PIDS[%d] process: PID: %d, PPID: %d, name: %s\n", i, processes[i]->PID, processes[i]->PPID, processes[i]->name);
+    }
+}
